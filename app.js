@@ -210,9 +210,9 @@ function renderCourseList() {
                 <span class="badge ${badge.class}">${badge.text}</span>
             </div>
             <div class="card-meta">
-                <div class="meta-item">🧑‍🏫 ${course.instructor || '未定'}</div>
-                <div class="meta-item">🏆 ${course.credits} 學分</div>
-                <div class="meta-item" style="grid-column: span 2">🕒 ${timeStr}</div>
+                <div class="meta-item"><i data-lucide="user" class="icon-sm"></i> ${course.instructor || '未定'}</div>
+                <div class="meta-item"><i data-lucide="award" class="icon-sm"></i> ${course.credits} 學分</div>
+                <div class="meta-item" style="grid-column: span 2"><i data-lucide="clock" class="icon-sm"></i> ${timeStr}</div>
             </div>
         `;
 
@@ -224,6 +224,7 @@ function renderCourseList() {
     });
 
     courseList.appendChild(fragment);
+    lucide.createIcons();
 }
 
 // ====== Core Business Logic ======
@@ -441,7 +442,7 @@ function showSelectedListModal() {
                     <td>${course.credits}</td>
                     <td><span class="badge ${badge.class}">${badge.text}</span></td>
                     <td style="font-size: 13px;">${timeStr}</td>
-                    <td><button class="btn-remove-small" data-id="${course.id}">移除</button></td>
+                    <td><button class="btn-remove-small" data-id="${course.id}"><i data-lucide="x" class="icon-xs"></i> 移除</button></td>
                 </tr>
             `;
         });
@@ -455,10 +456,14 @@ function showSelectedListModal() {
         // Add handlers
         selectedListContent.querySelectorAll('.btn-remove-small').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const id = e.target.dataset.id;
+                const id = e.currentTarget.dataset.id;
                 removeCourseFromSchedule(id);
                 showSelectedListModal();
             });
+        });
+
+        lucide.createIcons({
+            root: selectedListContent
         });
     }
 

@@ -8,13 +8,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
+    <!-- Background Elements -->
+    <div class="bg-mesh">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
     <div id="app-container">
         <!-- Sidebar: File/Department selector -->
-        <aside id="sidebar">
+        <aside id="sidebar" class="glass-panel">
             <div class="sidebar-header">
                 <h2>ClassCalendar</h2>
                 <p>淡江大學排課輔助系統</p>
@@ -22,23 +30,30 @@
 
             <div class="filter-section">
                 <label for="department-select">選擇系所 / 類別</label>
-                <select id="department-select">
-                    <option value="" disabled selected>請選擇...</option>
-                </select>
+                <div class="select-wrapper">
+                    <select id="department-select">
+                        <option value="" disabled selected>請選擇...</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="select-icon"></i>
+                </div>
 
                 <div class="search-box">
-                    <input type="text" id="course-search" placeholder="搜尋課程名稱或教師...">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="course-search" placeholder="搜尋課程或教師...">
                 </div>
             </div>
 
             <div class="course-list-header">
                 <h3>課程列表</h3>
-                <span id="course-count">0 筆</span>
+                <span id="course-count" class="glass-badge">0 筆</span>
             </div>
 
             <div id="course-list">
                 <!-- Course cards injected by JS -->
-                <div class="empty-state">請選擇系所以顯示課程</div>
+                <div class="empty-state">
+                    <i data-lucide="inbox"></i>
+                    <p>請選擇系所以顯示課程</p>
+                </div>
             </div>
         </aside>
 
@@ -47,18 +62,29 @@
             <div class="main-header">
                 <h1>我的課表</h1>
                 <div class="header-actions">
-                    <button id="free-time-toggle" class="btn-toggle">🕐 空閒篩選</button>
-                    <button id="clear-free-slots-btn" class="btn-secondary hidden">清除空閒</button>
-                    <button id="view-selected-list-btn" class="btn-secondary">📋 已選清單</button>
-                    <div class="credits-counter">已選 <strong id="total-credits">0</strong> 學分</div>
-                    <button id="clear-schedule-btn" class="btn-secondary">清空課表</button>
+                    <button id="free-time-toggle" class="btn-toggle">
+                        <i data-lucide="clock-4"></i> 空閒篩選
+                    </button>
+                    <button id="clear-free-slots-btn" class="btn-secondary hidden">
+                        <i data-lucide="eraser"></i> 清除空閒
+                    </button>
+                    <button id="view-selected-list-btn" class="btn-secondary">
+                        <i data-lucide="list-checks"></i> 已選清單
+                    </button>
+                    <div class="credits-counter">
+                        已選 <strong id="total-credits">0</strong> 學分
+                    </div>
+                    <button id="clear-schedule-btn" class="btn-secondary">
+                        <i data-lucide="trash-2"></i> 清空課表
+                    </button>
                 </div>
             </div>
             <div id="free-time-hint" class="free-time-hint hidden">
-                💡 點擊課表上的<strong>空白格</strong>來標記您有空的時段，左側課程列表會自動篩選出完全符合的課程。
+                <i data-lucide="lightbulb" class="hint-icon"></i>
+                <span>點擊課表上的<strong>空白格</strong>來標記您有空的時段，左側將自動篩選出符合的課程。</span>
             </div>
 
-            <div class="timetable-container">
+            <div class="timetable-container glass-panel">
                 <table id="timetable">
                     <thead>
                         <tr>
@@ -80,9 +106,9 @@
 
     <!-- Conflict Alert Modal -->
     <div id="conflict-modal" class="modal-overlay hidden">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>⚠️ 排課衝突</h3>
+        <div class="modal glass-modal">
+            <div class="modal-header text-danger">
+                <h3><i data-lucide="alert-triangle"></i> 排課衝突</h3>
             </div>
             <div class="modal-body">
                 <p id="conflict-message"></p>
@@ -95,7 +121,7 @@
 
     <!-- Details Modal -->
     <div id="details-modal" class="modal-overlay hidden">
-        <div class="modal">
+        <div class="modal glass-modal">
             <div class="modal-header">
                 <h3 id="details-title"></h3>
                 <span id="details-badge" class="badge"></span>
@@ -103,7 +129,7 @@
             <div class="modal-body" id="details-content">
             </div>
             <div class="modal-footer">
-                <button id="details-remove-btn" class="btn-danger">從課表移除</button>
+                <button id="details-remove-btn" class="btn-danger"><i data-lucide="filter-x"></i> 移除</button>
                 <button id="details-close-btn" class="btn-secondary">關閉</button>
             </div>
         </div>
@@ -111,9 +137,9 @@
 
     <!-- Selected Courses List Modal -->
     <div id="selected-list-modal" class="modal-overlay hidden">
-        <div class="modal modal-lg">
+        <div class="modal modal-lg glass-modal">
             <div class="modal-header">
-                <h3>📋 已選課程清單</h3>
+                <h3><i data-lucide="list"></i> 已選課程清單</h3>
             </div>
             <div class="modal-body" id="selected-list-content">
             </div>
@@ -124,6 +150,10 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // Initialize static icons first, dynamic icons will be handled in app.js
+        lucide.createIcons();
+    </script>
 </body>
 
 </html>
