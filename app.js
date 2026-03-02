@@ -234,7 +234,7 @@ function renderCourseList() {
 
         div.innerHTML = `
             <div class="card-header">
-                <div class="course-name">${course.name} <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal; margin-left: 4px;">${course.courseCode}</span></div>
+                <div class="course-name">${course.name} <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal; margin-left: 4px;">${course.seqNumber}</span></div>
                 <span class="badge ${badge.class}">${badge.text}</span>
             </div>
             <div class="card-meta">
@@ -310,7 +310,7 @@ function addCourseToSchedule(course) {
                     block.dataset.id = course.id;
                     block.innerHTML = `
                         <div class="block-title">${course.name}</div>
-                        <div class="block-room">${course.courseCode}</div>
+                        <div class="block-room">${course.seqNumber}</div>
                         <div class="block-room">${schedule.room || ''}</div>
                     `;
 
@@ -411,8 +411,8 @@ function showDetailsModal(course) {
 
     detailsContent.innerHTML = `
         <div class="details-grid">
-            <div class="dg-label">課程代碼</div>
-            <div class="dg-value">${course.courseCode}</div>
+            <div class="dg-label">開課序號</div>
+            <div class="dg-value">${course.seqNumber}</div>
             
             <div class="dg-label">開課單位</div>
             <div class="dg-value">${course.departmentName}</div>
@@ -465,7 +465,7 @@ function showSelectedListModal() {
                 <tr>
                     <td>
                         <div style="font-weight: 500;">${course.name}</div>
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${course.courseCode}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${course.seqNumber}</div>
                     </td>
                     <td>${course.credits}</td>
                     <td><span class="badge ${badge.class}">${badge.text}</span></td>
