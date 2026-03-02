@@ -125,16 +125,43 @@ function populateDepartments() {
         }
     });
 
-    // Sort and append
-    const sortedDepts = Array.from(depts.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    // Separate pinned categories from the rest
+    const pinnedKeywords = ['核心課程', '體育', '校共通課程'];
+    const pinned = [];
+    const rest = [];
 
-    // Group them or just list them (keeping it simple list for now)
-    sortedDepts.forEach(([id, name]) => {
+    Array.from(depts.entries()).forEach(([id, name]) => {
+        if (pinnedKeywords.some(kw => name.includes(kw))) {
+            pinned.push([id, name]);
+        } else {
+            rest.push([id, name]);
+        }
+    });
+
+    pinned.sort((a, b) => a[1].localeCompare(b[1]));
+    rest.sort((a, b) => a[1].localeCompare(b[1]));
+
+    // Pinned group
+    const pinnedGroup = document.createElement('optgroup');
+    pinnedGroup.label = '⭐ 常用類別';
+    pinned.forEach(([id, name]) => {
         const option = document.createElement('option');
         option.value = id;
         option.textContent = name;
-        deptSelect.appendChild(option);
+        pinnedGroup.appendChild(option);
     });
+    deptSelect.appendChild(pinnedGroup);
+
+    // Rest group
+    const restGroup = document.createElement('optgroup');
+    restGroup.label = '📚 所有系所';
+    rest.forEach(([id, name]) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = name;
+        restGroup.appendChild(option);
+    });
+    deptSelect.appendChild(restGroup);
 }
 
 function filterCourses() {
@@ -150,12 +177,13 @@ function filterCourses() {
             (c.instructor && c.instructor.toLowerCase().includes(query));
 
         // Free-time filter: course must fit entirely within selected free slots
+        // Out-of-grid schedules (day 6/7, period 11+) are ignored — only check in-grid slots
         let matchFreeTime = true;
         if (freeTimeMode && freeSlots.size > 0 && c.schedules && c.schedules.length > 0) {
             matchFreeTime = c.schedules.every(schedule => {
-                if (schedule.day < 1 || schedule.day > 5) return false;
+                if (schedule.day < 1 || schedule.day > 5) return true; // skip out-of-grid
                 return schedule.periods.every(period => {
-                    if (period < 1 || period > 10) return false;
+                    if (period < 1 || period > 10) return true; // skip out-of-grid
                     return freeSlots.has(`${schedule.day}-${period}`);
                 });
             });
@@ -485,7 +513,7 @@ function toggleFreeTimeMode() {
     // Toggle selectable styling on empty cells
     for (let d = 1; d <= 5; d++) {
         for (let p = 1; p <= 10; p++) {
-            const cell = document.getElementById(`cell - ${d} -${p} `);
+            const cell = document.getElementById(`cell-${d}-${p}`);
             if (!cell) continue;
             if (freeTimeMode && !gridState[d][p]) {
                 cell.classList.add('free-slot-selectable');
@@ -504,7 +532,7 @@ function handleCellClick(day, period, td) {
     // Only allow toggling on empty cells (no course scheduled)
     if (gridState[day][period]) return;
 
-    const key = `${day} -${period} `;
+    const key = `${day}-${period}`;
     if (freeSlots.has(key)) {
         freeSlots.delete(key);
         td.classList.remove('free-slot-selected');
@@ -520,7 +548,7 @@ function clearFreeSlots() {
     freeSlots.clear();
     for (let d = 1; d <= 5; d++) {
         for (let p = 1; p <= 10; p++) {
-            const cell = document.getElementById(`cell - ${d} -${p} `);
+            const cell = document.getElementById(`cell-${d}-${p}`);
             if (cell) cell.classList.remove('free-slot-selected');
         }
     }
