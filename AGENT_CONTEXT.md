@@ -1,4 +1,4 @@
-# AI Context & Project State: ClassCalendar WebApp
+# AI Context & Project State: TKUschedule WebApp
 
 ## 專案概述 (Project Overview)
 這是一個「淡江大學輕量化排課輔助 WebApp」。
@@ -58,6 +58,18 @@
 - 下拉選單以 `<optgroup>` 分為「⭐ 常用類別」與「📚 所有系所」兩組。
 - 核心課程、體育、校共通課程等常用分類固定在最上方，方便快速選取。
 
+### 8. 本地保存已選課表 (LocalStorage Persistence) - ✅ 完成
+- 透過 `window.localStorage` 自動保存已選課程 ID 列表 (key: `classCalendar_selectedCourses`)。
+- 每次新增、移除、清空課表時自動觸發保存，並顯示 Toast 通知。
+- 頁面重載後自動還原已選課表，會跳過與已排課程衝突的項目。
+- Toast 通知採用 Glassmorphism 風格、右下角滑入動畫，2 秒後自動消失。
+
+### 9. 匯出 / 匯入課表代碼 (Schedule Code Export/Import) - ✅ 完成
+- 點擊「📤 匯出代碼」按鈕，將已選課程 ID 陣列 JSON 化後透過 Unicode-safe Base64 編碼產生分享代碼。
+- 匯出 Modal 顯示代碼 textarea（等寬字型）+ 一鍵複製按鈕 + 課程摘要清單。
+- 點擊「📥 匯入代碼」按鈕，貼上他人分享的代碼即可還原課表。
+- 匯入時會先清空目前課表，逐一加入課程，自動跳過衝突與找不到的課程，並在 Toast 中顯示摘要。
+
 ## UI 設計特色 (Design Highlights)
 - **Glassmorphism 風格**：半透明毛玻璃面板、模糊背景效果。
 - **動態背景**：三個漸層色彩的 Blob 動畫在背景緩緩移動。
@@ -66,11 +78,11 @@
 - **微動畫**：課程方塊加入時有 `popIn` 動畫，空閒格選取有脈衝光暈特效。
 
 ## 潛在限制與已知行為 (Known Behaviors & Limitations)
-1. **無後端資料庫**：所有狀態存放於前端記憶體 (`app.js` 變數中)，重整網頁後課表的內容會流失 (若有持久化需求，後續可實作 `localStorage` 保存 `selectedCourses`)。
+1. **無後端資料庫**：所有狀態存放於前端記憶體與 `localStorage`。`localStorage` 保存已選課程 ID 列表，頁面重載後自動還原。
 2. **期間長度**：目前只渲染 1~10 節的網格。部分課程有第 11~14 節的排課資料，在 `courses.json` 中都有記錄，但 UI `gridState` 與網格 DOM 皆只實作 `for(p=1; p<=10)`。超出範圍的排課在空閒篩選時會被自動略過。
 3. **資料筆數**：`courses.json` 包含 6085 筆課程、橫跨 196 個系所/類別。
 
 ## 下一步開發建議 (Recommended Next Steps if asked by User)
-- 導入 `window.localStorage` 保存已選課表，使頁面重載不遺失。
 - 新增 PDF / PNG 課表匯出功能。
 - 支援顯示第 11~14 節課程。
+- 支援多組課表方案切換 (允許使用者儲存多種排課組合)。

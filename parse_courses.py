@@ -101,6 +101,12 @@ def main():
                     if len(dept_parts) > 1:
                         # e.g. "資工系（日）　DEPARTMENT OF..." -> "資工系（日）"
                         department_name = dept_parts[1].split('\u3000')[0].split(' ')[0]
+
+            # Manual override for duplicate physical education department names
+            if filename == 'B05.htm':
+                department_name = '體育興趣二年級－日'
+            elif filename == 'B09.htm':
+                department_name = '體育興趣一年級－日'
             
             # Process data rows
             # Row 2 is headers, Row 3 is sub-headers

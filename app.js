@@ -8,8 +8,12 @@ const gridState = Array(6).fill().map(() => Array(11).fill(null)); // 1-indexed 
 let freeTimeMode = false;
 const freeSlots = new Set(); // stores "day-period" strings e.g. "1-3"
 
+// LocalStorage key
+const STORAGE_KEY = 'classCalendar_selectedCourses';
+
 // ====== DOM Elements ======
 const deptSelect = document.getElementById('department-select');
+const gradeSelect = document.getElementById('grade-select');
 const searchInput = document.getElementById('course-search');
 const courseList = document.getElementById('course-list');
 const courseCount = document.getElementById('course-count');
@@ -39,6 +43,20 @@ const detailsRemoveBtn = document.getElementById('details-remove-btn');
 
 let currentDetailsCourseId = null;
 
+// Export/Import DOM
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const exportModal = document.getElementById('export-modal');
+const exportCodeOutput = document.getElementById('export-code-output');
+const copyCodeBtn = document.getElementById('copy-code-btn');
+const exportCourseSummary = document.getElementById('export-course-summary');
+const exportCloseBtn = document.getElementById('export-close-btn');
+const importModal = document.getElementById('import-modal');
+const importCodeInput = document.getElementById('import-code-input');
+const importError = document.getElementById('import-error');
+const importCloseBtn = document.getElementById('import-close-btn');
+const importConfirmBtn = document.getElementById('import-confirm-btn');
+
 // ====== Initialization ======
 async function init() {
     initTimetableGrid();
@@ -53,12 +71,24 @@ async function init() {
         populateDepartments();
 
         // Setup Event Listeners
-        deptSelect.addEventListener('change', filterCourses);
+        deptSelect.addEventListener('change', () => {
+            populateGrades();
+            filterCourses();
+        });
+        gradeSelect.addEventListener('change', filterCourses);
         searchInput.addEventListener('input', filterCourses);
         clearBtn.addEventListener('click', clearSchedule);
         freeTimeToggle.addEventListener('click', toggleFreeTimeMode);
         clearFreeSlotsBtn.addEventListener('click', clearFreeSlots);
         viewSelectedListBtn.addEventListener('click', showSelectedListModal);
+
+        // Export/Import Event Listeners
+        exportBtn.addEventListener('click', showExportModal);
+        importBtn.addEventListener('click', showImportModal);
+        exportCloseBtn.addEventListener('click', () => exportModal.classList.add('hidden'));
+        copyCodeBtn.addEventListener('click', handleCopyCode);
+        importCloseBtn.addEventListener('click', () => importModal.classList.add('hidden'));
+        importConfirmBtn.addEventListener('click', handleImportConfirm);
 
         // Modal Event Listeners
         conflictCloseBtn.addEventListener('click', () => conflictModal.classList.add('hidden'));
@@ -74,8 +104,12 @@ async function init() {
         // Initialize default selection
         if (deptSelect.options.length > 1) {
             deptSelect.selectedIndex = 1;
+            populateGrades();
             filterCourses();
         }
+
+        // Restore saved schedule from localStorage
+        restoreFromLocalStorage();
 
     } catch (e) {
         console.error('Initialization error:', e);
@@ -164,17 +198,61 @@ function populateDepartments() {
     deptSelect.appendChild(restGroup);
 }
 
+function populateGrades() {
+    const deptId = deptSelect.value;
+    if (!deptId) {
+        gradeSelect.innerHTML = '<option value="" selected>全部年級</option>';
+        gradeSelect.disabled = true;
+        return;
+    }
+
+    const grades = new Set();
+    allCourses.forEach(c => {
+        if (c.departmentId === deptId && c.grade) {
+            grades.add(c.grade);
+        }
+    });
+
+    const prevGrade = gradeSelect.value;
+    gradeSelect.innerHTML = '<option value="">全部年級</option>';
+
+    if (grades.size > 0) {
+        Array.from(grades).sort().forEach(g => {
+            const option = document.createElement('option');
+            option.value = g;
+            if (g === '0') {
+                option.textContent = '其他或不分年級';
+            } else {
+                option.textContent = `${g} 年級`;
+            }
+            gradeSelect.appendChild(option);
+        });
+        gradeSelect.disabled = false;
+
+        if (prevGrade && grades.has(prevGrade)) {
+            gradeSelect.value = prevGrade;
+        } else {
+            gradeSelect.value = '';
+        }
+    } else {
+        gradeSelect.disabled = true;
+    }
+}
+
 function filterCourses() {
     const deptId = deptSelect.value;
+    const gradeVal = gradeSelect.value;
     const query = searchInput.value.toLowerCase().trim();
 
     if (!deptId) return;
 
     filteredCourses = allCourses.filter(c => {
         const matchDept = c.departmentId === deptId;
+        const matchGrade = !gradeVal || c.grade === gradeVal;
         const matchQuery = !query ||
             c.name.toLowerCase().includes(query) ||
-            (c.instructor && c.instructor.toLowerCase().includes(query));
+            (c.instructor && c.instructor.toLowerCase().includes(query)) ||
+            (c.seqNumber && c.seqNumber.toLowerCase().includes(query));
 
         // Free-time filter: course must fit entirely within selected free slots
         // Out-of-grid schedules (day 6/7, period 11+) are ignored — only check in-grid slots
@@ -189,7 +267,7 @@ function filterCourses() {
             });
         }
 
-        return matchDept && matchQuery && matchFreeTime;
+        return matchDept && matchGrade && matchQuery && matchFreeTime;
     });
 
     renderCourseList();
@@ -329,6 +407,7 @@ function addCourseToSchedule(course) {
     // Refresh Sidebar and Stats
     renderCourseList();
     updateTotalCredits();
+    saveToLocalStorage();
 }
 
 function removeCourseFromSchedule(courseId) {
@@ -362,6 +441,7 @@ function removeCourseFromSchedule(courseId) {
 
     renderCourseList();
     updateTotalCredits();
+    saveToLocalStorage();
 }
 
 function clearSchedule() {
@@ -375,6 +455,7 @@ function clearSchedule() {
     }
     renderCourseList();
     updateTotalCredits();
+    saveToLocalStorage();
 }
 
 function updateTotalCredits() {
@@ -553,6 +634,283 @@ function clearFreeSlots() {
         }
     }
     filterCourses();
+}
+
+// ====== Export / Import Schedule Code ======
+
+// Unicode-safe Base64 helpers
+function utoa(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
+function atou(b64) {
+    return decodeURIComponent(escape(atob(b64)));
+}
+
+function generateScheduleCode() {
+    const ids = Object.keys(selectedCourses);
+    if (ids.length === 0) return '';
+    const json = JSON.stringify(ids);
+    return utoa(json);
+}
+
+function decodeScheduleCode(code) {
+    const trimmed = code.trim();
+    if (!trimmed) throw new Error('代碼不可為空');
+    const json = atou(trimmed);
+    const ids = JSON.parse(json);
+    if (!Array.isArray(ids)) throw new Error('無效的代碼格式');
+    return ids;
+}
+
+function showExportModal() {
+    const courses = Object.values(selectedCourses);
+    if (courses.length === 0) {
+        exportCodeOutput.value = '';
+        exportCourseSummary.innerHTML = '<div class="empty-state" style="padding: 16px;">目前尚未選擇任何課程，無法匯出。</div>';
+    } else {
+        exportCodeOutput.value = generateScheduleCode();
+        const nameList = courses.map(c => `• ${c.name} (${c.seqNumber})`).join('\n');
+        exportCourseSummary.innerHTML = `
+            <div class="summary-header">包含 ${courses.length} 門課程：</div>
+            <div class="summary-list">${nameList}</div>
+        `;
+    }
+    exportModal.classList.remove('hidden');
+    lucide.createIcons({ root: exportModal });
+}
+
+function handleCopyCode() {
+    const code = exportCodeOutput.value;
+    if (!code) return;
+    navigator.clipboard.writeText(code).then(() => {
+        // Visual feedback: change icon to checkmark
+        copyCodeBtn.innerHTML = '<i data-lucide="check"></i>';
+        copyCodeBtn.classList.add('copied');
+        lucide.createIcons({ root: copyCodeBtn });
+        showToast('✅ 代碼已複製到剪貼板', 'success');
+        setTimeout(() => {
+            copyCodeBtn.innerHTML = '<i data-lucide="copy"></i>';
+            copyCodeBtn.classList.remove('copied');
+            lucide.createIcons({ root: copyCodeBtn });
+        }, 2000);
+    }).catch(() => {
+        // Fallback: select text
+        exportCodeOutput.select();
+        document.execCommand('copy');
+        showToast('✅ 代碼已複製', 'success');
+    });
+}
+
+function showImportModal() {
+    importCodeInput.value = '';
+    importError.classList.add('hidden');
+    importError.textContent = '';
+    importModal.classList.remove('hidden');
+    lucide.createIcons({ root: importModal });
+    // Auto-focus input
+    setTimeout(() => importCodeInput.focus(), 100);
+}
+
+function handleImportConfirm() {
+    const code = importCodeInput.value;
+    importError.classList.add('hidden');
+
+    try {
+        const ids = decodeScheduleCode(code);
+
+        // Validate: check if all IDs can be found
+        const foundCourses = [];
+        const notFound = [];
+        ids.forEach(id => {
+            const course = allCourses.find(c => c.id === id);
+            if (course) {
+                foundCourses.push(course);
+            } else {
+                notFound.push(id);
+            }
+        });
+
+        if (foundCourses.length === 0) {
+            throw new Error('代碼中的課程均無法在目前資料庫中找到。');
+        }
+
+        // Clear current schedule first
+        clearSchedulesilent();
+
+        // Add courses one by one
+        let addedCount = 0;
+        let conflictCount = 0;
+        foundCourses.forEach(course => {
+            const conflict = checkConflicts(course);
+            if (conflict) {
+                conflictCount++;
+                return;
+            }
+            // Add to schedule (inline to avoid triggering save toast for each)
+            selectedCourses[course.id] = course;
+            if (course.schedules) {
+                const badge = getBadgeType(course.reqElective);
+                course.schedules.forEach(schedule => {
+                    if (schedule.day < 1 || schedule.day > 5) return;
+                    schedule.periods.forEach(period => {
+                        if (period < 1 || period > 10) return;
+                        gridState[schedule.day][period] = course.id;
+                        const cell = document.getElementById(`cell-${schedule.day}-${period}`);
+                        if (cell) {
+                            const block = document.createElement('div');
+                            block.className = `schedule-block ${badge.class}`;
+                            block.dataset.id = course.id;
+                            block.innerHTML = `
+                                <div class="block-title">${course.name}</div>
+                                <div class="block-room">${course.seqNumber}</div>
+                                <div class="block-room">${schedule.room || ''}</div>
+                            `;
+                            block.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                showDetailsModal(course);
+                            });
+                            cell.appendChild(block);
+                        }
+                    });
+                });
+            }
+            addedCount++;
+        });
+
+        renderCourseList();
+        updateTotalCredits();
+        saveToLocalStorage();
+
+        // Close modal
+        importModal.classList.add('hidden');
+
+        // Summary toast
+        let msg = `✅ 已匯入 ${addedCount} 門課程`;
+        if (conflictCount > 0) msg += `，${conflictCount} 門因衝突被跳過`;
+        if (notFound.length > 0) msg += `，${notFound.length} 門未找到`;
+        showToast(msg, 'restore');
+
+    } catch (e) {
+        importError.textContent = `❌ 無效的課表代碼：${e.message}`;
+        importError.classList.remove('hidden');
+    }
+}
+
+// Silent version of clearSchedule (no toast, no save)
+function clearSchedulesilent() {
+    selectedCourses = {};
+    for (let d = 1; d <= 5; d++) {
+        for (let p = 1; p <= 10; p++) {
+            gridState[d][p] = null;
+            const cell = document.getElementById(`cell-${d}-${p}`);
+            if (cell) cell.innerHTML = '';
+        }
+    }
+}
+
+// ====== LocalStorage Persistence ======
+function saveToLocalStorage() {
+    try {
+        const ids = Object.keys(selectedCourses);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+        showToast(`💾 已自動儲存 ${ids.length} 門課程`, 'success');
+    } catch (e) {
+        console.warn('Failed to save to localStorage:', e);
+        showToast('⚠️ 儲存失敗', 'error');
+    }
+}
+
+function restoreFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const ids = JSON.parse(raw);
+        if (!Array.isArray(ids) || ids.length === 0) return;
+
+        let restoredCount = 0;
+        ids.forEach(id => {
+            const course = allCourses.find(c => c.id === id);
+            if (course && !selectedCourses[id]) {
+                // Silently add without conflict check toast spam:
+                // Use addCourseToSchedule logic inline to avoid extra toasts
+                const conflict = checkConflicts(course);
+                if (conflict) return; // skip conflicting courses silently
+
+                selectedCourses[course.id] = course;
+
+                if (course.schedules) {
+                    const badge = getBadgeType(course.reqElective);
+                    course.schedules.forEach(schedule => {
+                        if (schedule.day < 1 || schedule.day > 5) return;
+                        schedule.periods.forEach(period => {
+                            if (period < 1 || period > 10) return;
+                            gridState[schedule.day][period] = course.id;
+                            const cell = document.getElementById(`cell-${schedule.day}-${period}`);
+                            if (cell) {
+                                const block = document.createElement('div');
+                                block.className = `schedule-block ${badge.class}`;
+                                block.dataset.id = course.id;
+                                block.innerHTML = `
+                                    <div class="block-title">${course.name}</div>
+                                    <div class="block-room">${course.seqNumber}</div>
+                                    <div class="block-room">${schedule.room || ''}</div>
+                                `;
+                                block.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    showDetailsModal(course);
+                                });
+                                cell.appendChild(block);
+                            }
+                        });
+                    });
+                }
+                restoredCount++;
+            }
+        });
+
+        if (restoredCount > 0) {
+            renderCourseList();
+            updateTotalCredits();
+            showToast(`✅ 已還原 ${restoredCount} 門課程`, 'restore');
+        }
+    } catch (e) {
+        console.warn('Failed to restore from localStorage:', e);
+    }
+}
+
+// ====== Toast Notification ======
+let toastTimeout = null;
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    // Clear previous toast timer to avoid overlap
+    if (toastTimeout) clearTimeout(toastTimeout);
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    // Remove existing toasts
+    container.querySelectorAll('.toast').forEach(t => t.remove());
+    container.appendChild(toast);
+
+    // Trigger enter animation
+    requestAnimationFrame(() => {
+        toast.classList.add('toast-visible');
+    });
+
+    // Auto-dismiss
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
 }
 
 // Boot the app

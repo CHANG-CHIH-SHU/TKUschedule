@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClassCalendar — 互動式課表</title>
+    <title>TKUschedule — 互動式課表</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
         <!-- Sidebar: File/Department selector -->
         <aside id="sidebar" class="glass-panel">
             <div class="sidebar-header">
-                <h2>ClassCalendar</h2>
+                <h2>TKUschedule</h2>
                 <p>淡江大學排課輔助系統</p>
             </div>
 
@@ -37,9 +37,17 @@
                     <i data-lucide="chevron-down" class="select-icon"></i>
                 </div>
 
-                <div class="search-box">
+                <label for="grade-select" style="margin-top: 12px;">選擇年級</label>
+                <div class="select-wrapper">
+                    <select id="grade-select" disabled>
+                        <option value="" selected>全部年級</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="select-icon"></i>
+                </div>
+
+                <div class="search-box" style="margin-top: 16px;">
                     <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="course-search" placeholder="搜尋課程或教師...">
+                    <input type="text" id="course-search" placeholder="搜尋課程、教師或開課序號...">
                 </div>
             </div>
 
@@ -70,6 +78,12 @@
                     </button>
                     <button id="view-selected-list-btn" class="btn-secondary">
                         <i data-lucide="list-checks"></i> 已選清單
+                    </button>
+                    <button id="export-btn" class="btn-secondary">
+                        <i data-lucide="upload"></i> 匯出代碼
+                    </button>
+                    <button id="import-btn" class="btn-secondary">
+                        <i data-lucide="download"></i> 匯入代碼
                     </button>
                     <div class="credits-counter">
                         已選 <strong id="total-credits">0</strong> 學分
@@ -145,6 +159,46 @@
             </div>
             <div class="modal-footer">
                 <button id="selected-list-close-btn" class="btn-primary">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Code Modal -->
+    <div id="export-modal" class="modal-overlay hidden">
+        <div class="modal glass-modal">
+            <div class="modal-header">
+                <h3><i data-lucide="upload"></i> 匯出課表代碼</h3>
+            </div>
+            <div class="modal-body">
+                <p class="modal-hint">複製下方代碼，分享給朋友即可還原相同的課表。</p>
+                <div class="code-output-wrapper">
+                    <textarea id="export-code-output" readonly rows="4"></textarea>
+                    <button id="copy-code-btn" class="btn-copy" title="複製代碼">
+                        <i data-lucide="copy"></i>
+                    </button>
+                </div>
+                <div id="export-course-summary" class="code-summary"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="export-close-btn" class="btn-primary">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Code Modal -->
+    <div id="import-modal" class="modal-overlay hidden">
+        <div class="modal glass-modal">
+            <div class="modal-header">
+                <h3><i data-lucide="download"></i> 匯入課表代碼</h3>
+            </div>
+            <div class="modal-body">
+                <p class="modal-hint">貼上由他人分享的課表代碼，即可還原相同的課表。</p>
+                <textarea id="import-code-input" rows="4" placeholder="在此貼上課表代碼..."></textarea>
+                <div id="import-error" class="import-error hidden"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="import-close-btn" class="btn-secondary">取消</button>
+                <button id="import-confirm-btn" class="btn-primary"><i data-lucide="check"></i> 匯入</button>
             </div>
         </div>
     </div>
