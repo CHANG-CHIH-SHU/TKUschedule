@@ -1,6 +1,6 @@
 # 📅 ClassCalendar — 淡江大學互動式排課輔助系統
 
-> 一個無需後端、純靜態的輕量化排課 WebApp，搭配 Glassmorphism 深色 UI 風格。
+> 一個無需後端、純靜態的輕量化排課 WebApp，搭配 
 
 ![HTML](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
 ![CSS](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
